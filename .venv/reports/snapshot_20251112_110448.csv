@@ -1,0 +1,3 @@
+﻿sep=,
+timestamp,seg_bomba_encendida,eventos_encendido_bomba,alertas,protecciones_en_seco,litros_bombeados,litros_entrada,litros_consumidos,seg_pid_activo,seg_pid_auto_llenado,min_cis_cm,max_cis_cm,min_sup_cm,max_sup_cm
+2025-11-12T11:04:48,2.278,1,0,0,10.734,0.000,5.971,0.000,0.000,139.57,139.96,30.02,30.19

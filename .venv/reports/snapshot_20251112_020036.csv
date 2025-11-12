@@ -1,0 +1,2 @@
+timestamp,seconds_pump_on,liters_pumped,liters_inlet,liters_consumed,alerts,dry_protection_trips,pump_on_events,pid_enabled_seconds,pid_autofill_seconds,min_cis_cm,max_cis_cm,min_sup_cm,max_sup_cm
+2025-11-12T02:00:36,41.285,262.485,0.000,99.578,0,0,1,6.027,0.000,129.5,139.96,30.02,36.52
