@@ -93,8 +93,8 @@ def crear_texto_reporte_diario(hoy: date) -> str:
         ("Consumo:", f"{metricas['litros_consumidos']:.1f} L"),
     ]
     niveles = [
-        ("Cisterna min–max", _rango(metricas['min_cis_cm'], metricas['max_cis_cm'])),
-        ("Tanque min–max", _rango(metricas['min_sup_cm'], metricas['max_sup_cm'])),
+        ("Cisterna min–max:", _rango(metricas['min_cis_cm'], metricas['max_cis_cm'])),
+        ("Tanque min–max:", _rango(metricas['min_sup_cm'], metricas['max_sup_cm'])),
     ]
 
     return (
@@ -120,15 +120,10 @@ def escribir_csv_diario(hoy: date) -> str:
     # Archivo (acumula por día) – columnas ordenadas y legibles para Excel
     ruta = os.path.join(CARPETA_REPORTES, f"reporte_{hoy.strftime('%Y%m%d')}.csv")
     encabezados = [
-        # Meta
         "fecha",
-        # Estado
         "seg_bomba_encendida", "eventos_encendido_bomba", "alertas", "protecciones_en_seco",
-        # Caudales (L)
         "litros_bombeados", "litros_entrada", "litros_consumidos",
-        # PID (segundos)
         "seg_pid_activo", "seg_pid_auto_llenado",
-        # Niveles (cm)
         "min_cis_cm", "max_cis_cm", "min_sup_cm", "max_sup_cm"
     ]
 
