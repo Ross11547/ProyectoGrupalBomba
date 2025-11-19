@@ -98,11 +98,11 @@ def crear_texto_reporte_diario(hoy: date) -> str:
     ]
 
     return (
-        _h1(f"📅 Reporte diario — {hoy.strftime('%Y-%m-%d')}") +
-        "📋 <b>Estado</b>\n" + _fmt_tabla(estado) +
-        "🤖 <b>PID</b>\n" + _fmt_tabla(pid) +
-        "💧 <b>Entrada</b>\n" + _fmt_tabla(caudales) +
-        "📏 <b>Niveles</b>\n" + _fmt_tabla(niveles)
+        _h1(f"Reporte diario — {hoy.strftime('%Y-%m-%d')}") +
+        "<b>Estado</b>\n" + _fmt_tabla(estado) +
+        "<b>PID</b>\n" + _fmt_tabla(pid) +
+        "<b>Entrada</b>\n" + _fmt_tabla(caudales) +
+        "<b>Niveles</b>\n" + _fmt_tabla(niveles)
     )
 
 
@@ -375,6 +375,10 @@ rect_btn_vac_sup     = pygame.Rect(rect_boton_panel.x-(btn_w+btn_gap)*2, alto_ve
 rect_btn_pid_panel   = pygame.Rect(rect_boton_panel.x-(btn_w+btn_gap)*3, alto_ventana-54, btn_w, btn_h)
 rect_boton_menu      = pygame.Rect(rect_boton_panel.x-(btn_w+btn_gap)*4, alto_ventana-54, btn_w, btn_h)
 
+rect_btn_vel_menos = pygame.Rect(20, alto_ventana-54, 60, btn_h)
+rect_btn_vel_mas   = pygame.Rect(90, alto_ventana-54, 60, btn_h)
+rect_display_vel   = pygame.Rect(160, alto_ventana-54, 120, btn_h)
+
 menu_x, menu_y = 970, 340
 menu_w, menu_h = 280, 220
 
@@ -418,6 +422,8 @@ area_tanque_sup_cm2 = 25000
 distancia_suelo_segura_cm      = 50
 distancia_superficie_segura_cm = 20
 factor_tiempo_simulacion       = 8
+velocidades_disponibles = [0.25, 0.5, 1, 2, 4, 8, 16, 32]
+indice_velocidad_actual = velocidades_disponibles.index(8) 
 
 # Alarmas
 umbral_sin_agua_cm = 1
@@ -634,7 +640,7 @@ def dibujar_bomba_y_tuberias():
                      (rect_tanque_superior.x, rect_tanque_superior.y + 24), 6)
 
 def dibujar_controles():
-    t = "[ESPACIO] bomba  [↑/↓] velocidad  [W/S] manguera  [I] entrada  [R] reset  [M] mute [V/T/X] vaciar [Q] PID [F] Panel PID  [H] Menú"
+    t = "[ESPACIO] bomba  [↑/↓] velocidad  [W/S] manguera  [I] entrada  [R] reset  [M] mute [V/T/X] vaciar [Q] PID [F] Panel PID  [H] Menú  [</>] Vel.sim"
     y = rect_cisterna.bottom + 30
     w, h = fuente_peq.size(t)
     x = (ancho_ventana//2) - (w//2)
@@ -778,6 +784,14 @@ while ejecutando:
             elif e.key == pygame.K_f: pid_panel_visible = not pid_panel_visible
             elif e.key == pygame.K_a: allow_pid_auto_start = not allow_pid_auto_start
             elif e.key == pygame.K_h: menu_visible = not menu_visible
+            elif e.key == pygame.K_COMMA or e.key == pygame.K_LESS:  # < o ,
+                if indice_velocidad_actual > 0:
+                    indice_velocidad_actual -= 1
+                    factor_tiempo_simulacion = velocidades_disponibles[indice_velocidad_actual]
+            elif e.key == pygame.K_PERIOD or e.key == pygame.K_GREATER:  # > o .
+                if indice_velocidad_actual < len(velocidades_disponibles) - 1:
+                    indice_velocidad_actual += 1
+                    factor_tiempo_simulacion = velocidades_disponibles[indice_velocidad_actual]
             elif e.key == pygame.K_r:
                 nivel_cisterna_cm, nivel_tanque_sup_cm = 140, 30
                 altura_boca_manguera_cm = 120
@@ -794,6 +808,14 @@ while ejecutando:
             elif rect_btn_vac_sup.collidepoint(e.pos): nivel_tanque_sup_cm = 0
             elif rect_btn_pid_panel.collidepoint(e.pos): pid_panel_visible = not pid_panel_visible
             elif rect_boton_menu.collidepoint(e.pos): menu_visible = not menu_visible
+            elif rect_btn_vel_menos.collidepoint(e.pos):
+                if indice_velocidad_actual > 0:
+                    indice_velocidad_actual -= 1
+                    factor_tiempo_simulacion = velocidades_disponibles[indice_velocidad_actual]
+            elif rect_btn_vel_mas.collidepoint(e.pos):
+                if indice_velocidad_actual < len(velocidades_disponibles) - 1:
+                    indice_velocidad_actual += 1
+                    factor_tiempo_simulacion = velocidades_disponibles[indice_velocidad_actual]
             elif menu_visible and rect_menu and rect_menu.collidepoint(e.pos):
                 if rect_menu_rep.collidepoint(e.pos):
                     accion_enviar_reporte_ahora()
@@ -829,13 +851,15 @@ while ejecutando:
     sin_agua_sup = (nivel_tanque_sup_cm <= umbral_sin_agua_cm)
 
     if pid_enabled:
-        if sin_agua_cis and not auto_llenado_activo:
+        if nivel_cisterna_cm < umbral_auto_on and not auto_llenado_activo:
             auto_llenado_activo = True
             entrada_forzada_por_pid = True
         if auto_llenado_activo:
             entrada_on = True
             velocidad_bomba = 0
-            if nivel_cisterna_cm >= umbral_auto_off:
+         
+            required_stop_level = max(umbral_auto_off, altura_boca_manguera_cm + 5, alto_cisterna_cm * 0.55)
+            if nivel_cisterna_cm >= required_stop_level:
                 auto_llenado_activo = False
                 if entrada_forzada_por_pid:
                     entrada_on = False
@@ -854,6 +878,11 @@ while ejecutando:
 
     delta_vol_cis_cm3 = (entrada_lps - caudal_bomba_lps) * 1000 * dt_fisica
     nivel_cisterna_cm = limitar(nivel_cisterna_cm + delta_vol_cis_cm3/area_cisterna_cm2, 0, alto_cisterna_cm)
+    ##Evita sobrellenado
+    if entrada_on and nivel_cisterna_cm >= (alto_cisterna_cm - 0.5):
+        entrada_on = False
+        entrada_forzada_por_pid = False
+        auto_llenado_activo = False
 
     delta_vol_sup_cm3 = (caudal_bomba_lps - consumo_tanque_sup_lps) * 1000 * dt_fisica
     nivel_tanque_sup_cm = limitar(nivel_tanque_sup_cm + delta_vol_sup_cm3/area_tanque_sup_cm2, 0, alto_tanque_sup_cm)
@@ -891,6 +920,13 @@ while ejecutando:
         if proteccion_seco_on:
             bomba_on = False
             disparo_seco = True
+
+    # Si la bomba se apaga por secado y el PID está activo,
+    # habilitar la entrada para que la cisterna pueda llenarse automáticamente.
+    if disparo_seco and pid_enabled:
+        auto_llenado_activo = True
+        entrada_forzada_por_pid = True
+        entrada_on = True
 
     alerta_activa = (texto_alerta != "")
     if alerta_activa and not _prev_alerta_activa:
@@ -935,6 +971,28 @@ while ejecutando:
     dibujar_boton(rect_btn_vac_sup, "Vaciar tanque")
     dibujar_boton(rect_btn_vac_cis, "Vaciar cisterna")
     dibujar_boton_panel(panel_visible)
+     # NUEVO: Dibujar controles de velocidad de simulación
+    # Botón menos
+    pygame.draw.rect(ventana, color_boton_fondo if indice_velocidad_actual > 0 else (100,100,100), 
+                     rect_btn_vel_menos, border_radius=8)
+    pygame.draw.rect(ventana, color_boton_borde, rect_btn_vel_menos, 2, border_radius=8)
+    dibujar_texto(ventana, "◄", rect_btn_vel_menos.x+20, rect_btn_vel_menos.y+8, 
+                  color_boton_texto if indice_velocidad_actual > 0 else (150,150,150), fuente_med)
+    
+    # Botón más
+    pygame.draw.rect(ventana, color_boton_fondo if indice_velocidad_actual < len(velocidades_disponibles)-1 else (100,100,100), 
+                     rect_btn_vel_mas, border_radius=8)
+    pygame.draw.rect(ventana, color_boton_borde, rect_btn_vel_mas, 2, border_radius=8)
+    dibujar_texto(ventana, "►", rect_btn_vel_mas.x+20, rect_btn_vel_mas.y+8, 
+                  color_boton_texto if indice_velocidad_actual < len(velocidades_disponibles)-1 else (150,150,150), fuente_med)
+    
+    # Display de velocidad
+    pygame.draw.rect(ventana, (50, 50, 55), rect_display_vel, border_radius=8)
+    pygame.draw.rect(ventana, color_boton_borde, rect_display_vel, 2, border_radius=8)
+    vel_texto = f"{factor_tiempo_simulacion}x" if factor_tiempo_simulacion >= 1 else f"{factor_tiempo_simulacion:.2f}x"
+    w_txt, _ = fuente_med.size(vel_texto)
+    dibujar_texto(ventana, vel_texto, rect_display_vel.x + (rect_display_vel.w - w_txt)//2, 
+                  rect_display_vel.y+8, (100, 200, 255), fuente_med)
 
     dibujar_panel_general(caudal_bomba_lps, entrada_lps, texto_alerta)
     dibujar_panel_pid()
